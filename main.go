@@ -3,32 +3,105 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/breenbo/pokedexcli/internal"
 	"os"
-	"strings"
 )
 
+type cliCommand struct {
+	name        string
+	description string
+	callback    func() error
+}
+
+var commands map[string]cliCommand
+
 func main() {
+	commands = map[string]cliCommand{
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
+		"help": {
+			name:        "help",
+			description: "Help for Pokedex",
+			callback:    commandHelp,
+		},
+		"map": {
+			name:        "map",
+			description: "Display 20 pokemon location",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Display 20 pokemon location back",
+			callback:    commandMapb,
+		},
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		text := scanner.Text()
-		cleaned := cleanInput(text)
-		fmt.Printf("Your command was: %s\n", cleaned[0])
+		cleaned := internal.CleanInput(text)
+		command := cleaned[0]
+
+		if value, ok := commands[command]; ok {
+			err := value.callback()
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			fmt.Print("Unknown command\n")
+		}
 	}
 
 }
 
-func cleanInput(text string) []string {
-	words := []string{}
+func commandExit() error {
+	fmt.Println("Closing the Pokedex... Goodbye!")
+	os.Exit(0)
 
-	cleaned_text := strings.ToLower(strings.Trim(text, " "))
+	return nil
+}
 
-	input := strings.SplitSeq(cleaned_text, " ")
-	for word := range input {
-		words = append(words, word)
+func commandHelp() error {
+	helpMsg := "Welcome to the Pokedex!\n\nUsage:\n\n"
+
+	// TODO: sort func by alpha order ?
+
+	for _, command := range commands {
+		helpMsg += fmt.Sprintf("%s: %s\n", command.name, command.description)
 	}
 
-	return words
+	helpMsg += "\n"
+
+	fmt.Print(helpMsg)
+
+	return nil
+
+}
+
+func commandMap() error {
+	res, err := internal.FetchLocation()
+
+	if err != nil {
+		return err
+	}
+
+	locationMsg := ""
+	for _, loc := range res.Results {
+		locationMsg += fmt.Sprintf("%s\n", loc.Name)
+	}
+	locationMsg += "\n"
+
+	fmt.Print(locationMsg)
+
+	return nil
+}
+
+func commandMapb() error {
+	return nil
 }
