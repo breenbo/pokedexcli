@@ -10,10 +10,17 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(config *Config) error
 }
 
 var commands map[string]cliCommand
+
+type Config struct {
+	Next     string
+	Previous string
+}
+
+var config Config
 
 func main() {
 	commands = map[string]cliCommand{
@@ -39,6 +46,12 @@ func main() {
 		},
 	}
 
+	locationURL := "https://pokeapi.co/api/v2/location-area"
+	config = Config{
+		Next:     locationURL,
+		Previous: "",
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -49,7 +62,7 @@ func main() {
 		command := cleaned[0]
 
 		if value, ok := commands[command]; ok {
-			err := value.callback()
+			err := value.callback(&config)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -60,14 +73,14 @@ func main() {
 
 }
 
-func commandExit() error {
+func commandExit(config *Config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(config *Config) error {
 	helpMsg := "Welcome to the Pokedex!\n\nUsage:\n\n"
 
 	// TODO: sort func by alpha order ?
@@ -84,24 +97,37 @@ func commandHelp() error {
 
 }
 
-func commandMap() error {
-	res, err := internal.FetchLocation()
+func commandMap(config *Config) error {
+	res, err := internal.FetchLocation(config.Next)
 
 	if err != nil {
 		return err
 	}
+	// set up the config
+	config.Next = res.Next
+	config.Previous = res.Previous
 
-	locationMsg := ""
-	for _, loc := range res.Results {
-		locationMsg += fmt.Sprintf("%s\n", loc.Name)
-	}
-	locationMsg += "\n"
-
-	fmt.Print(locationMsg)
+	internal.PrintResults(res.Results)
 
 	return nil
 }
 
-func commandMapb() error {
+func commandMapb(config *Config) error {
+	if config.Previous == "" {
+		fmt.Print("you're on the first page\n")
+		return nil
+	}
+
+	res, err := internal.FetchLocation(config.Previous)
+
+	if err != nil {
+		return err
+	}
+	// set up the config
+	config.Next = res.Next
+	config.Previous = res.Previous
+
+	internal.PrintResults(res.Results)
+
 	return nil
 }

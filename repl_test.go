@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/breenbo/pokedexcli/internal"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestCleanInput(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		actual := cleanInput(c.input)
+		actual := internal.CleanInput(c.input)
 
 		if len(actual) != len(c.expected) {
 			t.Errorf("not same count of words")
