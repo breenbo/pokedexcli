@@ -3,7 +3,10 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
+	// "time"
 )
 
 type Result struct {
@@ -19,15 +22,31 @@ type APIResponse struct {
 
 func FetchLocation(url string) (APIResponse, error) {
 	locations := APIResponse{}
+	duration := time.Second * 5
 
-	res, err := http.Get(url)
-	if err != nil {
-		return locations, err
+	cache := NewCache(duration)
+	var body []byte
+
+	// use cached value first
+	if cached, ok := cache.Get(url); ok {
+		body = cached
+	} else {
+		res, err := http.Get(url)
+		if err != nil {
+			return locations, err
+		}
+		defer res.Body.Close()
+
+		live, err := io.ReadAll(res.Body)
+		if err != nil {
+			return locations, err
+		}
+
+		body = live
+		cache.Add(url, live)
 	}
-	defer res.Body.Close()
 
-	decoder := json.NewDecoder(res.Body)
-	if err := decoder.Decode(&locations); err != nil {
+	if err := json.Unmarshal(body, &locations); err != nil {
 		return locations, err
 	}
 
