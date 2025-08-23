@@ -10,7 +10,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(config *Config) error
+	callback    func(config *Config, argument string) error
 }
 
 var commands map[string]cliCommand
@@ -18,6 +18,7 @@ var commands map[string]cliCommand
 type Config struct {
 	Next     string
 	Previous string
+	BaseUrl  string
 }
 
 var config Config
@@ -44,10 +45,16 @@ func main() {
 			description: "Display 20 pokemon location back",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Search for pokemon inside a map area - need a valid area name",
+			callback:    commandExplore,
+		},
 	}
 
 	locationURL := "https://pokeapi.co/api/v2/location-area"
 	config = Config{
+		BaseUrl:  locationURL,
 		Next:     locationURL,
 		Previous: "",
 	}
@@ -61,8 +68,13 @@ func main() {
 		cleaned := internal.CleanInput(text)
 		command := cleaned[0]
 
+		argument := ""
+		if len(cleaned) > 1 {
+			argument = cleaned[1]
+		}
+
 		if value, ok := commands[command]; ok {
-			err := value.callback(&config)
+			err := value.callback(&config, argument)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -73,14 +85,14 @@ func main() {
 
 }
 
-func commandExit(config *Config) error {
+func commandExit(config *Config, argument string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 
 	return nil
 }
 
-func commandHelp(config *Config) error {
+func commandHelp(config *Config, argument string) error {
 	helpMsg := "Welcome to the Pokedex!\n\nUsage:\n\n"
 
 	// TODO: sort func by alpha order ?
@@ -97,7 +109,7 @@ func commandHelp(config *Config) error {
 
 }
 
-func commandMap(config *Config) error {
+func commandMap(config *Config, argument string) error {
 	res, err := internal.FetchLocation(config.Next)
 
 	if err != nil {
@@ -112,7 +124,7 @@ func commandMap(config *Config) error {
 	return nil
 }
 
-func commandMapb(config *Config) error {
+func commandMapb(config *Config, argument string) error {
 	if config.Previous == "" {
 		fmt.Print("you're on the first page\n")
 		return nil
@@ -128,6 +140,29 @@ func commandMapb(config *Config) error {
 	config.Previous = res.Previous
 
 	internal.PrintResults(res.Results)
+
+	return nil
+}
+
+func commandExplore(config *Config, areaName string) error {
+	if areaName == "" {
+		fmt.Print("you must add a valid area name\n")
+		return nil
+	}
+
+	fmt.Printf("Exploring %s...\n", areaName)
+
+	res, err := internal.FetchExplore(config.BaseUrl, areaName)
+	if err != nil {
+		return err
+	}
+
+	if len(res) > 0 {
+		fmt.Print("Found Pokemon:")
+		internal.PrintResults(res)
+	} else {
+		fmt.Print("No pokemon found\n")
+	}
 
 	return nil
 }

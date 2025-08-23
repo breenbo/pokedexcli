@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"time"
-	// "time"
 )
 
 type Result struct {
@@ -18,6 +17,12 @@ type APIResponse struct {
 	Next     string
 	Previous string
 	Results  []Result
+}
+
+type ExploreResponse struct {
+	Pokemon_encounters []struct {
+		Pokemon Result
+	}
 }
 
 func FetchLocation(url string) (APIResponse, error) {
@@ -53,11 +58,49 @@ func FetchLocation(url string) (APIResponse, error) {
 	return locations, nil
 }
 
+func FetchExplore(url string, areaName string) ([]Result, error) {
+	exploreRes := ExploreResponse{}
+	fullUrl := url + "/" + areaName
+	var body []byte
+	duration := time.Second * 5
+
+	cache := NewCache(duration)
+
+	if cached, ok := cache.Get(fullUrl); ok {
+		body = cached
+	} else {
+		res, err := http.Get(fullUrl)
+		if err != nil {
+			return []Result{}, err
+		}
+		defer res.Body.Close()
+
+		live, err := io.ReadAll(res.Body)
+		if err != nil {
+			return []Result{}, err
+		}
+
+		body = live
+		cache.Add(fullUrl, live)
+	}
+
+	if err := json.Unmarshal(body, &exploreRes); err != nil {
+		return []Result{}, err
+	}
+
+	pokemonList := []Result{}
+	for _, pokemon := range exploreRes.Pokemon_encounters {
+		pokemonList = append(pokemonList, pokemon.Pokemon)
+	}
+
+	return pokemonList, nil
+}
+
 func PrintResults(results []Result) {
 	// print the locations from slice
 	locationMsg := "\n"
 	for _, loc := range results {
-		locationMsg += fmt.Sprintf("%s\n", loc.Name)
+		locationMsg += fmt.Sprintf(" - %s\n", loc.Name)
 	}
 	locationMsg += "\n"
 

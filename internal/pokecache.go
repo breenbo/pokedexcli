@@ -72,6 +72,7 @@ func NewCache(interval time.Duration) *Cache {
 		Mu:      sync.Mutex{},
 	}
 
+	// open subroutine on cache creation to clean up the cache in the background every interval
 	go newCache.reapLoop(interval)
 
 	return &newCache
