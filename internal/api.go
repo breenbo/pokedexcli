@@ -2,7 +2,6 @@ package internal
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -25,9 +24,29 @@ type ExploreResponse struct {
 	}
 }
 
+type PokemonRes struct {
+	Name            string
+	Base_experience int
+	Height          int
+	Weight          int
+	Types           []struct {
+		Type Result
+	}
+	Stats []struct {
+		Base_stat int
+		Stat      struct {
+			Name string
+		}
+	}
+}
+
 type Pokemon struct {
 	Name            string
-	Base_experience uint16
+	Base_experience int
+	Height          int
+	Weight          int
+	Types           []string
+	Stats           []map[string]int
 }
 
 func cacheOrFetch(url string) ([]byte, error) {
@@ -95,6 +114,7 @@ func FetchExplore(url string, areaName string) ([]Result, error) {
 
 func FetchPokemon(url string, pokemonName string) (Pokemon, error) {
 	fullUrl := url + "/" + pokemonName
+	pokemonRes := PokemonRes{}
 	pokemon := Pokemon{}
 
 	body, err := cacheOrFetch(fullUrl)
@@ -102,20 +122,25 @@ func FetchPokemon(url string, pokemonName string) (Pokemon, error) {
 		return pokemon, err
 	}
 
-	if err := json.Unmarshal(body, &pokemon); err != nil {
+	if err := json.Unmarshal(body, &pokemonRes); err != nil {
 		return pokemon, err
+	}
+	pokemon.Name = pokemonRes.Name
+	pokemon.Base_experience = pokemonRes.Base_experience
+	pokemon.Height = pokemonRes.Height
+	pokemon.Weight = pokemonRes.Weight
+
+	pokemon.Types = make([]string, len(pokemonRes.Types))
+	for i, typeInfo := range pokemonRes.Types {
+		pokemon.Types[i] = typeInfo.Type.Name
+	}
+
+	pokemon.Stats = make([]map[string]int, len(pokemonRes.Stats))
+	for i, statInfo := range pokemonRes.Stats {
+		pokemon.Stats[i] = map[string]int{
+			statInfo.Stat.Name: statInfo.Base_stat,
+		}
 	}
 
 	return pokemon, nil
-}
-
-func PrintResults(results []Result) {
-	// print the locations from slice
-	locationMsg := "\n"
-	for _, loc := range results {
-		locationMsg += fmt.Sprintf(" - %s\n", loc.Name)
-	}
-	locationMsg += "\n"
-
-	fmt.Print(locationMsg)
 }

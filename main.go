@@ -3,10 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/breenbo/pokedexcli/internal"
 	"math/rand"
 	"os"
-
-	"github.com/breenbo/pokedexcli/internal"
 )
 
 type cliCommand struct {
@@ -58,6 +57,11 @@ func main() {
 			description: "try to catch a pokemon - need a valid pokemon name",
 			callback:    commandCatch,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "inspect a pokemon in your pokedex - need a valid pokemon name",
+			callback:    commandInspect,
+		},
 	}
 
 	locationURL := "https://pokeapi.co/api/v2/location-area"
@@ -103,8 +107,6 @@ func commandExit(config *Config, argument string) error {
 
 func commandHelp(config *Config, argument string) error {
 	helpMsg := "Welcome to the Pokedex!\n\nUsage:\n\n"
-
-	// TODO: sort func by alpha order ?
 
 	for _, command := range commands {
 		helpMsg += fmt.Sprintf("%s: %s\n", command.name, command.description)
@@ -197,7 +199,7 @@ func commandCatch(config *Config, pokemonName string) error {
 		return err
 	}
 
-	difficulty := int(pokemon.Base_experience)
+	difficulty := pokemon.Base_experience
 	randRoll := rand.Intn(difficulty + 100)
 
 	if randRoll > difficulty {
@@ -206,6 +208,29 @@ func commandCatch(config *Config, pokemonName string) error {
 		fmt.Printf("%s was caught!\n", pokemonName)
 		pokedex[pokemonName] = pokemon
 	}
+
+	return nil
+}
+
+func commandInspect(config *Config, pokemonName string) error {
+	if pokemonName == "" {
+		fmt.Print("you must add valid pokemon name\n")
+		return nil
+	}
+
+	if _, ok := pokedex[pokemonName]; !ok {
+		fmt.Printf("%s not in your pokedex\n", pokemonName)
+		return nil
+	}
+
+	fullUrl := config.BaseUrl + "/pokemon"
+
+	pokemon, err := internal.FetchPokemon(fullUrl, pokemonName)
+	if err != nil {
+		return err
+	}
+
+	internal.PrintPokemon(pokemon)
 
 	return nil
 }
