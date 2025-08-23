@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/breenbo/pokedexcli/internal"
+	"math/rand"
 	"os"
+
+	"github.com/breenbo/pokedexcli/internal"
 )
 
 type cliCommand struct {
@@ -22,6 +24,7 @@ type Config struct {
 }
 
 var config Config
+var pokedex map[string]internal.Pokemon
 
 func main() {
 	commands = map[string]cliCommand{
@@ -50,14 +53,20 @@ func main() {
 			description: "Search for pokemon inside a map area - need a valid area name",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "try to catch a pokemon - need a valid pokemon name",
+			callback:    commandCatch,
+		},
 	}
 
 	locationURL := "https://pokeapi.co/api/v2/location-area"
 	config = Config{
-		BaseUrl:  locationURL,
+		BaseUrl:  "https://pokeapi.co/api/v2",
 		Next:     locationURL,
 		Previous: "",
 	}
+	pokedex = make(map[string]internal.Pokemon)
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -152,7 +161,9 @@ func commandExplore(config *Config, areaName string) error {
 
 	fmt.Printf("Exploring %s...\n", areaName)
 
-	res, err := internal.FetchExplore(config.BaseUrl, areaName)
+	fullUrl := config.BaseUrl + "/location-area"
+
+	res, err := internal.FetchExplore(fullUrl, areaName)
 	if err != nil {
 		return err
 	}
@@ -162,6 +173,38 @@ func commandExplore(config *Config, areaName string) error {
 		internal.PrintResults(res)
 	} else {
 		fmt.Print("No pokemon found\n")
+	}
+
+	return nil
+}
+
+func commandCatch(config *Config, pokemonName string) error {
+	if pokemonName == "" {
+		fmt.Print("you must add valid pokemon name\n")
+		return nil
+	}
+
+	if _, ok := pokedex[pokemonName]; ok {
+		fmt.Printf("%s already in your pokedex\n", pokemonName)
+		return nil
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+	fullUrl := config.BaseUrl + "/pokemon"
+
+	pokemon, err := internal.FetchPokemon(fullUrl, pokemonName)
+	if err != nil {
+		return err
+	}
+
+	difficulty := int(pokemon.Base_experience)
+	randRoll := rand.Intn(difficulty + 100)
+
+	if randRoll > difficulty {
+		fmt.Printf("%s escaped!\n", pokemonName)
+	} else {
+		fmt.Printf("%s was caught!\n", pokemonName)
+		pokedex[pokemonName] = pokemon
 	}
 
 	return nil
