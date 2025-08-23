@@ -62,6 +62,11 @@ func main() {
 			description: "inspect a pokemon in your pokedex - need a valid pokemon name",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "inspect your pokedex - need a valid pokemon name",
+			callback:    commandPokedex,
+		},
 	}
 
 	locationURL := "https://pokeapi.co/api/v2/location-area"
@@ -231,6 +236,20 @@ func commandInspect(config *Config, pokemonName string) error {
 	}
 
 	internal.PrintPokemon(pokemon)
+
+	return nil
+}
+
+func commandPokedex(config *Config, arg string) error {
+	if len(pokedex) == 0 {
+		fmt.Print("No pokemon in your pokedex\n")
+		return nil
+	}
+
+	fmt.Print("Your Pokedex:\n")
+	for _, p := range pokedex {
+		fmt.Printf(" - %v\n", p.Name)
+	}
 
 	return nil
 }
